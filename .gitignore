@@ -1,0 +1,9 @@
+.idea
+
+# Environment variables
+.env
+
+TODO
+
+# DS_STORE
+.DS_Store
