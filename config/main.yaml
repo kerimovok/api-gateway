@@ -26,22 +26,22 @@ services:
 # Applied if not overridden by service-specific settings
 global:
     logging: true
-#     rate_limit:
-#         max_requests: 1000
-#         duration: 1h
-#     cache:
-#             enabled: true
-#             duration: 1m
-#     ip_allowlist:
-#         - '192.168.1.1'
-#         - '10.0.0.0/8'
-#     ip_allowlist:
-#         - '192.168.1.1'
-#         - '10.0.0.0/8'
-#     ip_blocklist:
-#         - '127.0.0.1'
-#     user_agent_allowlist:
-#         - 'Mozilla/5.0'
-#         - 'PostmanRuntime'
-#     user_agent_blocklist:
-#         - 'BadBot'
+    # rate_limit:
+    #     max_requests: 1000
+    #     duration: 1h
+    # cache:
+    #     enabled: true
+    #     duration: 1m
+    # ip_allowlist:
+    #     - '192.168.1.1'
+    #     - '10.0.0.0/8'
+    # ip_allowlist:
+    #     - '192.168.1.1'
+    #     - '10.0.0.0/8'
+    # ip_blocklist:
+    #     - '127.0.0.1'
+    # user_agent_allowlist:
+    #     - 'Mozilla/5.0'
+    #     - 'PostmanRuntime'
+    # user_agent_blocklist:
+    #     - 'BadBot'
