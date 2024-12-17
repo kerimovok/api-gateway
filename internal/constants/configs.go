@@ -35,7 +35,7 @@ type ServiceConfig struct {
 	FirewallConfig `yaml:",inline"`
 	Name           string           `yaml:"name"`
 	URL            string           `yaml:"url" validate:"required,url"`
-	Auth           AuthConfig       `yaml:"auth"`
+	Auth           *AuthConfig      `yaml:"auth"`
 	RateLimit      *RateLimitConfig `yaml:"rate_limit"`
 	Cache          *CacheConfig     `yaml:"cache"`
 }
