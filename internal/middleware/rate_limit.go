@@ -2,16 +2,15 @@ package middleware
 
 import (
 	"api-gateway/internal/config"
-	"api-gateway/internal/constants"
 	internalUtils "api-gateway/internal/utils"
-	pkgUtils "api-gateway/pkg/utils"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/storage/memory"
+	"github.com/kerimovok/go-pkg-utils/httpx"
+	pkgNet "github.com/kerimovok/go-pkg-utils/net"
 )
 
 var (
@@ -36,13 +35,11 @@ func getLimiter(service string, maxRequests int, duration time.Duration) fiber.H
 		Expiration: duration,
 		Storage:    store,
 		KeyGenerator: func(c *fiber.Ctx) string {
-			return service + "_" + pkgUtils.GetUserIP(c) // Use consistent IP detection
+			return service + "_" + pkgNet.GetUserIP(c) // Use consistent IP detection
 		},
 		LimitReached: func(c *fiber.Ctx) error {
-			return pkgUtils.ErrorResponse(c,
-				fiber.StatusTooManyRequests,
-				"Rate limit exceeded",
-				fmt.Errorf("retry after: %s", c.GetRespHeader("X-RateLimit-Reset")))
+			response := httpx.TooManyRequests("Rate limit exceeded")
+			return httpx.SendResponse(c, response)
 		},
 	}
 	limiters[service] = &cfg
@@ -55,15 +52,17 @@ func RateLimitMiddleware() fiber.Handler {
 		serviceName := c.Params("service")
 		serviceConfig, err := internalUtils.GetServiceConfig(serviceName, &cfg)
 		if err != nil {
-			return pkgUtils.ErrorResponse(c, fiber.StatusNotFound, "Service not found", err)
+			response := httpx.NotFound("Service not found")
+			return httpx.SendResponse(c, response)
 		}
 
 		if serviceConfig == nil {
-			return pkgUtils.ErrorResponse(c, fiber.StatusNotFound, "Service not found", nil)
+			response := httpx.NotFound("Service not found")
+			return httpx.SendResponse(c, response)
 		}
 
 		// Check if rate limiting is enabled in service or global config
-		var rateLimit *constants.RateLimitConfig
+		var rateLimit *config.RateLimitConfig
 		if serviceConfig.RateLimit != nil && serviceConfig.RateLimit.Enabled != nil && *serviceConfig.RateLimit.Enabled {
 			rateLimit = serviceConfig.RateLimit
 		} else if cfg.Global != nil && cfg.Global.RateLimit != nil &&

@@ -1,12 +1,12 @@
 package utils
 
 import (
-	"api-gateway/internal/constants"
+	"api-gateway/internal/config"
 	"fmt"
 )
 
 // Helper to get service configuration and apply global defaults
-func GetServiceConfig(serviceName string, cfg *constants.MainConfig) (*constants.ServiceConfig, error) {
+func GetServiceConfig(serviceName string, cfg *config.MainConfig) (*config.ServiceConfig, error) {
 	service, exists := cfg.Services[serviceName]
 	if !exists {
 		return nil, fmt.Errorf("service %s not found", serviceName)

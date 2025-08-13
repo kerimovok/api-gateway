@@ -1,14 +1,14 @@
 module api-gateway
 
-go 1.23.2
+go 1.24.5
 
 require (
-	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/gofiber/storage/memory v1.3.4
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
+	github.com/kerimovok/go-pkg-utils v1.0.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

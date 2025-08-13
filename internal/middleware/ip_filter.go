@@ -7,9 +7,10 @@ import (
 
 	"api-gateway/internal/config"
 	internalUtils "api-gateway/internal/utils"
-	pkgUtils "api-gateway/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/kerimovok/go-pkg-utils/httpx"
+	pkgNet "github.com/kerimovok/go-pkg-utils/net"
 )
 
 var (
@@ -45,18 +46,21 @@ func IPFilterMiddleware() fiber.Handler {
 		serviceName := c.Params("service")
 		serviceConfig, err := internalUtils.GetServiceConfig(serviceName, &cfg)
 		if err != nil {
-			return pkgUtils.ErrorResponse(c, fiber.StatusNotFound, "Service not found", err)
+			response := httpx.NotFound("Service not found")
+			return httpx.SendResponse(c, response)
 		}
 
 		if serviceConfig == nil {
-			return pkgUtils.ErrorResponse(c, fiber.StatusNotFound, "Service not found", nil)
+			response := httpx.NotFound("Service not found")
+			return httpx.SendResponse(c, response)
 		}
 
 		// Get client IP using the utility function
-		clientIP := pkgUtils.GetUserIP(c)
+		clientIP := pkgNet.GetUserIP(c)
 		ip := net.ParseIP(clientIP)
 		if ip == nil {
-			return pkgUtils.ErrorResponse(c, fiber.StatusBadRequest, "Invalid IP address", nil)
+			response := httpx.BadRequest("Invalid IP address", nil)
+			return httpx.SendResponse(c, response)
 		}
 
 		// Check blocklist first (both global and service-specific)
@@ -67,10 +71,8 @@ func IPFilterMiddleware() fiber.Handler {
 		combinedBlockList = append(combinedBlockList, serviceConfig.IPBlockList...)
 
 		if isIPBlocked(ip, combinedBlockList) {
-			return pkgUtils.ErrorResponse(c,
-				fiber.StatusForbidden,
-				fmt.Sprintf("IP %s is blocked", clientIP),
-				nil)
+			response := httpx.Forbidden(fmt.Sprintf("IP %s is blocked", clientIP))
+			return httpx.SendResponse(c, response)
 		}
 
 		// Then check allowlist if defined
@@ -82,10 +84,8 @@ func IPFilterMiddleware() fiber.Handler {
 
 		if hasAllowlist := len(combinedAllowList) > 0; hasAllowlist {
 			if !isIPAllowed(ip, combinedAllowList) {
-				return pkgUtils.ErrorResponse(c,
-					fiber.StatusForbidden,
-					fmt.Sprintf("IP %s is not allowed", clientIP),
-					nil)
+				response := httpx.Forbidden(fmt.Sprintf("IP %s is not allowed", clientIP))
+				return httpx.SendResponse(c, response)
 			}
 		}
 

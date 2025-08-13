@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"api-gateway/internal/config"
-	"api-gateway/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/proxy"
+	"github.com/kerimovok/go-pkg-utils/httpx"
 )
 
 // ProxyHandler forwards requests to the upstream service
@@ -17,13 +17,15 @@ func ProxyHandler() fiber.Handler {
 		// Find the corresponding service configuration
 		service, exists := cfg.Services[serviceName]
 		if !exists {
-			return utils.ErrorResponse(c, fiber.StatusNotFound, "Service not found", nil)
+			response := httpx.NotFound("Service not found")
+			return httpx.SendResponse(c, response)
 		}
 
 		// Forward the request to the upstream URL
 		targetURL := service.URL + "/" + c.Params("*")
 		if err := proxy.Forward(targetURL)(c); err != nil {
-			return utils.ErrorResponse(c, fiber.StatusBadGateway, "Failed to proxy request", err)
+			response := httpx.BadGateway("Failed to proxy request")
+			return httpx.SendResponse(c, response)
 		}
 
 		return nil

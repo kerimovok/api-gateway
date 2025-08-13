@@ -5,10 +5,8 @@ import (
 	"api-gateway/internal/constants"
 	"api-gateway/internal/handlers"
 	"api-gateway/internal/middleware"
-	pkgUtils "api-gateway/pkg/utils"
-	"api-gateway/pkg/validator"
+	"log"
 	"net/http"
-
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,21 +19,20 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/google/uuid"
+	pkgConfig "github.com/kerimovok/go-pkg-utils/config"
+	pkgValidator "github.com/kerimovok/go-pkg-utils/validator"
 )
 
 func init() {
-	// Initialize configuration
-	if err := config.InitConfig(); err != nil {
-		pkgUtils.LogFatal("failed to initialize config", err)
+	// Load configuration
+	if err := config.LoadConfig(); err != nil {
+		log.Fatalf("failed to load config: %v", err)
 	}
 
 	// Validate environment variables
-	if err := pkgUtils.ValidateConfig(constants.EnvValidationRules); err != nil {
-		pkgUtils.LogFatal("configuration validation failed", err)
+	if err := pkgValidator.ValidateConfig(constants.EnvValidationRules); err != nil {
+		log.Fatalf("configuration validation failed: %v", err)
 	}
-
-	// Initialize validator
-	validator.InitValidator()
 }
 
 func setupApp() *fiber.App {
@@ -85,20 +82,17 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		if err := app.Listen(":" + pkgUtils.GetEnv("PORT")); err != nil && err != http.ErrServerClosed {
-			pkgUtils.LogFatal("failed to start server", err)
+		if err := app.Listen(":" + pkgConfig.GetEnv("PORT")); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("failed to start server: %v", err)
 		}
 	}()
 
 	// Wait for shutdown signal
 	<-quit
-	pkgUtils.LogInfo("Shutting down server...")
-
-	// Stop the config watcher
-	config.StopConfig()
+	log.Println("Shutting down server...")
 
 	// Gracefully shutdown the server
 	if err := app.Shutdown(); err != nil {
-		pkgUtils.LogError("error shutting down server", err)
+		log.Printf("error shutting down server: %v", err)
 	}
 }

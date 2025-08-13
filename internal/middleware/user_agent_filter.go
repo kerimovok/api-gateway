@@ -3,11 +3,11 @@ package middleware
 import (
 	"api-gateway/internal/config"
 	internalUtils "api-gateway/internal/utils"
-	pkgUtils "api-gateway/pkg/utils"
 	"strings"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/kerimovok/go-pkg-utils/httpx"
 )
 
 var (
@@ -40,43 +40,40 @@ func UserAgentFilter() fiber.Handler {
 		serviceName := c.Params("service")
 		serviceConfig, err := internalUtils.GetServiceConfig(serviceName, &cfg)
 		if err != nil {
-			return pkgUtils.ErrorResponse(c, fiber.StatusNotFound, "Service not found", err)
+			response := httpx.NotFound("Service not found")
+			return httpx.SendResponse(c, response)
 		}
 
 		if serviceConfig == nil {
-			return pkgUtils.ErrorResponse(c, fiber.StatusNotFound, "Service not found", nil)
+			response := httpx.NotFound("Service not found")
+			return httpx.SendResponse(c, response)
 		}
 
 		userAgent := c.Get("User-Agent")
 		if userAgent == "" {
-			return pkgUtils.ErrorResponse(c, fiber.StatusForbidden, "User-Agent header is required", nil)
+			response := httpx.Forbidden("User-Agent header is required")
+			return httpx.SendResponse(c, response)
 		}
 
 		normalizedUA := getNormalizedUserAgent(userAgent)
 
 		// Check service-specific blocklist first (more specific rules take precedence)
 		if isUserAgentBlocked(normalizedUA, serviceConfig.UserAgentBlocklist) {
-			return pkgUtils.ErrorResponse(c,
-				fiber.StatusForbidden,
-				"User-Agent is blocked for this service",
-				nil)
+			response := httpx.Forbidden("User-Agent is blocked for this service")
+			return httpx.SendResponse(c, response)
 		}
 
 		// Then check global blocklist
 		if cfg.Global != nil && isUserAgentBlocked(normalizedUA, cfg.Global.UserAgentBlocklist) {
-			return pkgUtils.ErrorResponse(c,
-				fiber.StatusForbidden,
-				"User-Agent is blocked globally",
-				nil)
+			response := httpx.Forbidden("User-Agent is blocked globally")
+			return httpx.SendResponse(c, response)
 		}
 
 		// Check service-specific allowlist if defined
 		if len(serviceConfig.UserAgentAllowlist) > 0 {
 			if !isUserAgentAllowed(normalizedUA, serviceConfig.UserAgentAllowlist) {
-				return pkgUtils.ErrorResponse(c,
-					fiber.StatusForbidden,
-					"User-Agent is not allowed for this service",
-					nil)
+				response := httpx.Forbidden("User-Agent is not allowed for this service")
+				return httpx.SendResponse(c, response)
 			}
 			return c.Next() // If allowed by service rules, skip global check
 		}
@@ -84,10 +81,8 @@ func UserAgentFilter() fiber.Handler {
 		// Check global allowlist if defined
 		if cfg.Global != nil && len(cfg.Global.UserAgentAllowlist) > 0 {
 			if !isUserAgentAllowed(normalizedUA, cfg.Global.UserAgentAllowlist) {
-				return pkgUtils.ErrorResponse(c,
-					fiber.StatusForbidden,
-					"User-Agent is not allowed globally",
-					nil)
+				response := httpx.Forbidden("User-Agent is not allowed globally")
+				return httpx.SendResponse(c, response)
 			}
 		}
 

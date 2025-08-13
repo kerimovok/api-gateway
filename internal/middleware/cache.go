@@ -2,14 +2,13 @@ package middleware
 
 import (
 	"api-gateway/internal/config"
-	"api-gateway/internal/constants"
 	"api-gateway/internal/utils"
-	pkgUtils "api-gateway/pkg/utils"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/storage/memory"
+	"github.com/kerimovok/go-pkg-utils/httpx"
 )
 
 var (
@@ -26,7 +25,8 @@ func CacheMiddleware() fiber.Handler {
 		serviceName := c.Params("service")
 		serviceConfig, err := utils.GetServiceConfig(serviceName, &cfg)
 		if err != nil {
-			return pkgUtils.ErrorResponse(c, fiber.StatusNotFound, "Service not found", err)
+			response := httpx.NotFound("Service not found")
+			return httpx.SendResponse(c, response)
 		}
 
 		if serviceConfig == nil {
@@ -34,7 +34,7 @@ func CacheMiddleware() fiber.Handler {
 		}
 
 		// Determine cache config to use (service-specific or global)
-		var cacheConfig *constants.CacheConfig
+		var cacheConfig *config.CacheConfig
 		if serviceConfig.Cache != nil {
 			cacheConfig = serviceConfig.Cache
 		} else if cfg.Global != nil && cfg.Global.Cache != nil {
