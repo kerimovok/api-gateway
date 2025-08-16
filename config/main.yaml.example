@@ -1,0 +1,44 @@
+services:
+    mailer:
+        url: 'http://127.0.0.1:3002'
+        auth:
+            enabled: true
+            key: 'X-API-Key'
+            value: 'key123'
+        rate_limit:
+            enabled: true
+            max_requests: 3
+            duration: 1m
+        cache:
+            enabled: false
+            duration: 5s
+        ip_allowlist:
+            - '127.0.0.1'
+            - '192.168.1.1'
+            - '10.0.0.0/8'
+        ip_blocklist:
+            - '127.0.0.1'
+        user_agent_allowlist:
+            - 'Mozilla/5.0'
+            - 'PostmanRuntime'
+        user_agent_blocklist:
+            - 'BadBot'
+# Applied if not overridden by service-specific settings
+global:
+    logging: true
+    rate_limit:
+        max_requests: 1000
+        duration: 1h
+    cache:
+        enabled: true
+        duration: 1m
+    ip_allowlist:
+        - '192.168.1.1'
+        - '10.0.0.0/8'
+    ip_blocklist:
+        - '127.0.0.1'
+    user_agent_allowlist:
+        - 'Mozilla/5.0'
+        - 'PostmanRuntime'
+    user_agent_blocklist:
+        - 'BadBot'
