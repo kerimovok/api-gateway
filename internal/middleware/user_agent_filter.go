@@ -5,6 +5,7 @@ import (
 	internalUtils "api-gateway/internal/utils"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/kerimovok/go-pkg-utils/httpx"
@@ -12,26 +13,49 @@ import (
 
 var (
 	// Cache normalized user agents for better performance
-	userAgentCache = make(map[string]string)
-	uaCacheMutex   sync.RWMutex
+	userAgentCache  = make(map[string]string)
+	uaCacheMutex    sync.RWMutex
+	lastCleanup     time.Time
+	cleanupInterval = 5 * time.Minute
+	maxCacheSize    = 1000
 )
 
 // getNormalizedUserAgent returns cached or normalized user agent
 func getNormalizedUserAgent(ua string) string {
-	normalized := strings.ToLower(ua)
-
+	// Check cache first
 	uaCacheMutex.RLock()
-	if cached, exists := userAgentCache[normalized]; exists {
+	if cached, exists := userAgentCache[ua]; exists {
 		uaCacheMutex.RUnlock()
 		return cached
 	}
 	uaCacheMutex.RUnlock()
 
-	uaCacheMutex.Lock()
-	userAgentCache[normalized] = normalized
-	uaCacheMutex.Unlock()
+	// Normalize and cache
+	normalized := strings.ToLower(ua)
 
+	uaCacheMutex.Lock()
+	defer uaCacheMutex.Unlock()
+
+	// Cleanup cache if needed
+	cleanupCacheIfNeeded()
+
+	// Store in cache
+	userAgentCache[ua] = normalized
 	return normalized
+}
+
+// cleanupCacheIfNeeded removes old entries if cache is too large
+func cleanupCacheIfNeeded() {
+	now := time.Now()
+	if now.Sub(lastCleanup) < cleanupInterval && len(userAgentCache) < maxCacheSize {
+		return
+	}
+
+	// Clear cache if it's too large
+	if len(userAgentCache) >= maxCacheSize {
+		userAgentCache = make(map[string]string)
+	}
+	lastCleanup = now
 }
 
 func UserAgentFilter() fiber.Handler {
@@ -58,13 +82,13 @@ func UserAgentFilter() fiber.Handler {
 		normalizedUA := getNormalizedUserAgent(userAgent)
 
 		// Check service-specific blocklist first (more specific rules take precedence)
-		if isUserAgentBlocked(normalizedUA, serviceConfig.UserAgentBlocklist) {
+		if len(serviceConfig.UserAgentBlocklist) > 0 && isUserAgentBlocked(normalizedUA, serviceConfig.UserAgentBlocklist) {
 			response := httpx.Forbidden("User-Agent is blocked for this service")
 			return httpx.SendResponse(c, response)
 		}
 
 		// Then check global blocklist
-		if cfg.Global != nil && isUserAgentBlocked(normalizedUA, cfg.Global.UserAgentBlocklist) {
+		if cfg.Global != nil && len(cfg.Global.UserAgentBlocklist) > 0 && isUserAgentBlocked(normalizedUA, cfg.Global.UserAgentBlocklist) {
 			response := httpx.Forbidden("User-Agent is blocked globally")
 			return httpx.SendResponse(c, response)
 		}
@@ -75,7 +99,8 @@ func UserAgentFilter() fiber.Handler {
 				response := httpx.Forbidden("User-Agent is not allowed for this service")
 				return httpx.SendResponse(c, response)
 			}
-			return c.Next() // If allowed by service rules, skip global check
+			// If allowed by service rules, proceed to next middleware
+			return c.Next()
 		}
 
 		// Check global allowlist if defined
@@ -86,13 +111,19 @@ func UserAgentFilter() fiber.Handler {
 			}
 		}
 
+		// If no allowlists are defined, allow the request to proceed
 		return c.Next()
 	}
 }
 
 func isUserAgentBlocked(normalizedUA string, blocklist []string) bool {
+	if blocklist == nil {
+		return false
+	}
 	for _, blocked := range blocklist {
-		if strings.Contains(normalizedUA, strings.ToLower(blocked)) {
+		// Convert blocklist item to lowercase once
+		normalizedBlocked := strings.ToLower(blocked)
+		if strings.Contains(normalizedUA, normalizedBlocked) {
 			return true
 		}
 	}
@@ -100,8 +131,13 @@ func isUserAgentBlocked(normalizedUA string, blocklist []string) bool {
 }
 
 func isUserAgentAllowed(normalizedUA string, allowlist []string) bool {
+	if allowlist == nil {
+		return false
+	}
 	for _, allowed := range allowlist {
-		if strings.Contains(normalizedUA, strings.ToLower(allowed)) {
+		// Convert allowlist item to lowercase once
+		normalizedAllowed := strings.ToLower(allowed)
+		if strings.Contains(normalizedUA, normalizedAllowed) {
 			return true
 		}
 	}

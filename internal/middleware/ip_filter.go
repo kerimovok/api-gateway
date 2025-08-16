@@ -65,10 +65,12 @@ func IPFilterMiddleware() fiber.Handler {
 
 		// Check blocklist first (both global and service-specific)
 		var combinedBlockList []string
-		if cfg.Global != nil {
+		if cfg.Global != nil && len(cfg.Global.IPBlockList) > 0 {
 			combinedBlockList = append(combinedBlockList, cfg.Global.IPBlockList...)
 		}
-		combinedBlockList = append(combinedBlockList, serviceConfig.IPBlockList...)
+		if len(serviceConfig.IPBlockList) > 0 {
+			combinedBlockList = append(combinedBlockList, serviceConfig.IPBlockList...)
+		}
 
 		if isIPBlocked(ip, combinedBlockList) {
 			response := httpx.Forbidden(fmt.Sprintf("IP %s is blocked", clientIP))
@@ -77,10 +79,12 @@ func IPFilterMiddleware() fiber.Handler {
 
 		// Then check allowlist if defined
 		var combinedAllowList []string
-		if cfg.Global != nil {
+		if cfg.Global != nil && len(cfg.Global.IPAllowList) > 0 {
 			combinedAllowList = append(combinedAllowList, cfg.Global.IPAllowList...)
 		}
-		combinedAllowList = append(combinedAllowList, serviceConfig.IPAllowList...)
+		if len(serviceConfig.IPAllowList) > 0 {
+			combinedAllowList = append(combinedAllowList, serviceConfig.IPAllowList...)
+		}
 
 		if hasAllowlist := len(combinedAllowList) > 0; hasAllowlist {
 			if !isIPAllowed(ip, combinedAllowList) {
@@ -94,10 +98,16 @@ func IPFilterMiddleware() fiber.Handler {
 }
 
 func isIPAllowed(ip net.IP, allowlist []string) bool {
+	if allowlist == nil {
+		return false
+	}
 	return checkIPInList(ip, allowlist)
 }
 
 func isIPBlocked(ip net.IP, blocklist []string) bool {
+	if blocklist == nil {
+		return false
+	}
 	return checkIPInList(ip, blocklist)
 }
 

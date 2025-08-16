@@ -3,6 +3,7 @@ package middleware
 import (
 	"api-gateway/internal/config"
 	internalUtils "api-gateway/internal/utils"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/kerimovok/go-pkg-utils/httpx"
@@ -20,9 +21,15 @@ func APIKeyMiddleware() fiber.Handler {
 			return httpx.SendResponse(c, response)
 		}
 
-		// Skip if auth is not enabled
-		if serviceConfig.Auth.Enabled == nil || !*serviceConfig.Auth.Enabled {
+		// Skip if auth config is nil or not enabled
+		if serviceConfig.Auth == nil || serviceConfig.Auth.Enabled == nil || !*serviceConfig.Auth.Enabled {
 			return c.Next()
+		}
+
+		// Validate required auth fields
+		if serviceConfig.Auth.Key == "" || serviceConfig.Auth.Value == "" {
+			response := httpx.InternalServerError("Invalid auth configuration", fmt.Errorf("missing auth key or value"))
+			return httpx.SendResponse(c, response)
 		}
 
 		providedAPIKey := c.Get(serviceConfig.Auth.Key)
